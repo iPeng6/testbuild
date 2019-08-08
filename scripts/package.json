@@ -5,6 +5,8 @@
   },
   "dependencies": {
     "commander": "^2.20.0",
+    "ora": "^3.4.0",
+    "plist": "^3.0.1",
     "shelljs": "^0.8.3"
   }
 }

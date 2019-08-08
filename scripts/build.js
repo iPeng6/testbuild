@@ -4,6 +4,9 @@ const sh = require('shelljs')
 const fs = require('fs')
 const path = require('path')
 const packageJson = require('../package.json')
+const ora = require('ora')
+const loading = ora()
+const plist = require('plist')
 
 cmd
   .version('0.0.1')
@@ -41,9 +44,13 @@ const config = {
   storePassword: 'stpwd1234',
   keyAlias: 'ktest',
 }
+
+const NewFileName = getNewFileName()
+const ApkReleaseDir = path.resolve(__dirname, '../android/app/build/outputs/apk/release')
+const NewApkFullPath = path.resolve(ApkReleaseDir, NewFileName)
+
 if (cmd.android) {
-  console.log(getVersionName())
-  // buildAndroid()
+  buildAndroid()
 } else if (cmd.ios) {
   buildIos()
 }
@@ -52,7 +59,7 @@ async function buildAndroid() {
   console.log('>>> 安卓打包开始')
   await genKeystore()
   cleanApkRelease()
-  return
+
   console.log('>>> 生成离线 bundle 包')
   {
     const bundlePath = path.resolve(__dirname, '../android/app/src/main/assets/index.android.bundle')
@@ -67,13 +74,27 @@ async function buildAndroid() {
 
   console.log('>>> 打包开始')
   {
-    sh.cd(path.resolve(__dirname, '..'))
-    sh.exec('react-native run-android --variant=release')
+    await bundleRelease()
   }
   console.log('<<< 打包成功')
+
+  console.log('>>> 上传文件')
+  {
+    upload(NewApkFullPath)
+  }
+  console.log('<<< 上传文件结束')
 }
 
-function buildIos() {}
+function buildIos() {
+  console.log('>>> iOS打包开始')
+  const infoPlistPath = path.resolve(__dirname, '../ios/testbuild/Info.plist')
+  // const serviceInfoPath = path.resolve(__dirname, '../ios/NotificationService/Info.plist')
+  var info = plist.parse(fs.readFileSync(infoPlistPath, 'utf8'))
+  obj['CFBundleShortVersionString'] = packageJson.version
+  obj['CFBundleVersion'] = parseInt(obj['CFBundleVersion']) + 1
+  const xml = plist.build(info)
+  fs.writeFileSync(infoPlistPath, xml)
+}
 
 function genKeystore() {
   const filePath = path.resolve(__dirname, `../android/app/${config.storeFile}`)
@@ -118,18 +139,48 @@ function genKeystore() {
 }
 
 function cleanApkRelease() {
-  const dirName = path.resolve(__dirname, '../android/app/build/outputs/apk/release')
-  console.log('>>> 清理 apk release', dirName)
+  console.log('>>> 清理 apk release', ApkReleaseDir)
 
-  sh.mkdir('-p', dirName)
-  sh.rm('-r', dirName)
-  sh.mkdir('-p', dirName)
+  sh.mkdir('-p', ApkReleaseDir)
+  sh.rm('-r', ApkReleaseDir)
+  sh.mkdir('-p', ApkReleaseDir)
   console.log('<<< 清理完成')
 }
 
-function getVersionName() {
+function getNewFileName() {
   const platform = cmd.android ? 'android' : 'ios'
   const env = cmd.dev ? 'dev' : cmd.test ? 'test' : 'prod'
-  console.log(sh.exec('git rev-list HEAD --count'))
-  return `${platform}_${env}_v${packageJson.version}_`
+  const commitCount = sh.exec('git rev-list HEAD --count', { silent: true }).stdout.trim()
+  const hash = sh.exec('git describe --always', { silent: true }).stdout.trim()
+  const ext = cmd.android ? 'apk' : 'ipa'
+  return `${platform}_${env}_v${packageJson.version}_${commitCount}_${getDate()}_${hash}.${ext}`
+}
+
+function getDate() {
+  const now = new Date()
+  function pad(num) {
+    return String(num).padStart(2, '0')
+  }
+  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`
+}
+
+function bundleRelease() {
+  return new Promise(resolve => {
+    // 将文件名生成到临时文件 给 build.gradle 读取共享
+    sh.exec(`echo 'fileName=${NewFileName}' > ${path.resolve(ApkReleaseDir, 'buildinfo')}`)
+    const wt = fs.watch(ApkReleaseDir, (event, filename) => {
+      if (filename && filename === NewFileName) {
+        wt.close()
+        resolve()
+      }
+    })
+    sh.cd(path.resolve(__dirname, '..'))
+    sh.exec('react-native run-android --variant=release')
+  })
+}
+
+function upload(path) {
+  loading.start()
+  sh.exec(`scp ${path} wuser@101.132.40.237:/opt/static/download/shoukuanla`)
+  loading.stop()
 }

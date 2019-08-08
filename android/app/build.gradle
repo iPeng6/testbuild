@@ -173,11 +173,12 @@ android {
     // applicationVariants are e.g. debug, release
     applicationVariants.all { variant ->
 				variant.outputs.all {
-					def formattedDate = new Date().format('yyyyMMddHHmm')
-					def fileName = "我的命名" + "_V${defaultConfig.versionName}_C${defaultConfig.versionCode}_${formattedDate}_" +
-							variant.name +
-							".apk"
-					outputFileName = fileName
+						if (variant.buildType.name.equals('release')) {
+							Properties properties = new Properties()
+							properties.load(project.rootProject.file('app/build/outputs/apk/release/buildinfo').newDataInputStream())
+							def fileName = properties.getProperty('fileName')
+							outputFileName = fileName
+						}
 				}
 
         variant.outputs.each { output ->
