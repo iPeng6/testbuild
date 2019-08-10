@@ -30,6 +30,7 @@ if (!cmd.dev && !cmd.test && !cmd.prod) {
 
 const env = cmd.dev ? 'dev' : cmd.test ? 'test' : 'prod'
 cdRoot()
+sh.mkdir('-p', './src')
 sh.exec(`echo '{ "env": "${env}" }' > ./src/env.json`)
 
 const NewFileName = getNewFileName()
@@ -45,6 +46,8 @@ const ReleaseIpaFullPath = path.resolve(IpaReleaseDir, ReleaseIpaName)
 const NewIpaFullPath = path.resolve(IpaReleaseDir, NewFileName)
 
 if (cmd.android) {
+  androidSyncVersion()
+  return
   buildAndroid()
 } else if (cmd.ios) {
   buildIos()
@@ -171,6 +174,19 @@ async function upload(path) {
   loading.stop()
 }
 
+function androidSyncVersion() {
+  const gradlePath = path.resolve(__dirname, '../android/app/build.gradle')
+  let fileStr = fs.readFileSync(gradlePath).toString()
+  // versionCode 1
+  // versionName "1.0"
+  fileStr = fileStr.replace(/(versionCode )(.+)/, (match, $1, buidlNo) => {
+    return $1 + (parseInt(buidlNo) + 1)
+  })
+
+  fileStr = fileStr.replace(/(versionName )(.+)/, `$1"${packageJson.version}"`)
+
+  fs.writeFileSync(gradlePath, fileStr)
+}
 function iosSyncVersion() {
   const infoPlistPath = path.resolve(__dirname, `../ios/${packageJson.name}/Info.plist`)
   const serviceInfoPlistPath = path.resolve(__dirname, '../ios/NotificationService/Info.plist')
