@@ -1,0 +1,13 @@
+{
+  "files.trimTrailingWhitespace": true,
+	"files.insertFinalNewline": true,
+	"files.trimFinalNewlines": true,
+  "editor.formatOnSave": false,
+	"eslint.autoFixOnSave": true,
+	"eslint.validate": [
+		"javascript",
+		"javascriptreact",
+		{"language":  "typescript",  "autoFix":  true  },
+		{"language":  "typescriptreact",  "autoFix":  true  }
+	],
+}
