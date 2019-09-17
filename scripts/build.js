@@ -271,9 +271,9 @@ function getDate() {
 }
 
 function buildApkRelease() {
-  sh.mkdir('-p', ApkReleaseDir)
   return new Promise(resolve => {
     const wt = fs.watch(ApkReleaseDir, (event, filename) => {
+      console.log('======', event, filename)
       if (filename && filename === ReleaseApkName) {
         wt.close()
         resolve()
