@@ -1,11 +1,14 @@
 #!/usr/bin/env node
+
 const cmd = require('commander')
 const sh = require('shelljs')
 const fs = require('fs')
+const crypto = require('crypto')
 const path = require('path')
-const packageJson = require('../package.json')
 const ora = require('ora')
 const loading = ora()
+
+const packageJson = require('../package.json')
 const plist = require('plist')
 
 cmd
@@ -18,20 +21,7 @@ cmd
   .option('-p, --prod', 'build production')
   .parse(process.argv)
 
-if (!cmd.ios && !cmd.android) {
-  console.log('你需要指定打包平台 eg: --ios or --android')
-  return
-}
-
-if (!cmd.dev && !cmd.test && !cmd.prod) {
-  console.log('你需要指定环境参数 eg: --dev or --test or --prod')
-  return
-}
-
 const env = cmd.dev ? 'dev' : cmd.test ? 'test' : 'prod'
-cdRoot()
-sh.mkdir('-p', './src')
-sh.exec(`echo '{ "env": "${env}" }' > ./src/env.json`)
 
 const NewFileName = getNewFileName()
 
@@ -45,27 +35,162 @@ const ReleaseIpaName = `${packageJson.name}.ipa`
 const ReleaseIpaFullPath = path.resolve(IpaReleaseDir, ReleaseIpaName)
 const NewIpaFullPath = path.resolve(IpaReleaseDir, NewFileName)
 
-if (cmd.android) {
-  androidSyncVersion()
-  return
-  buildAndroid()
-} else if (cmd.ios) {
-  buildIos()
+start()
+
+function start() {
+  if (!checkCmdInput()) {
+    return
+  }
+
+  if (!checkEnvVar()) {
+    return
+  }
+
+  if (!checkCmdInstall()) {
+    return
+  }
+
+  cacheNodeMoudles()
+
+  createSrcEnv()
+  if (cmd.android) {
+    console.time('android build:')
+    buildAndroid().then(() => {
+      // sh.exec(`git add . && git commit -a -m "build ${NewFileName}"`)
+      console.timeEnd('android build:')
+    })
+  } else if (cmd.ios) {
+    console.time('ios build:')
+    buildIos().then(() => {
+      // sh.exec(`git add . && git commit -a -m "build ${NewFileName}" && git push`)
+      console.timeEnd('ios build:')
+    })
+  }
+}
+
+function checkCmdInput() {
+  if (!cmd.ios && !cmd.android) {
+    console.log('你需要指定打包平台 eg: --ios or --android')
+    return false
+  }
+
+  if (!cmd.dev && !cmd.test && !cmd.prod) {
+    console.log('你需要指定环境参数 eg: --dev or --test or --prod')
+    return false
+  }
+  return true
+}
+
+function checkEnvVar() {
+  if (!sh.env.ANDROID_HOME) {
+    console.log('缺少环境变量 ANDROID_HOME，请配置 android sdk')
+  }
+  sh.exec('echo ANDROID_HOME $ANDROID_HOME')
+  return true
+}
+
+function checkCmdInstall() {
+  if (!sh.which('java')) {
+    console.log('缺少java命令，请安装jdk')
+    return false
+  }
+  if (!sh.which('node')) {
+    console.log('缺少node命令，请安装node')
+    return false
+  }
+  if (!sh.which('yarn')) {
+    console.log('缺少yarn命令，请安装yarn')
+    return false
+  }
+  if (!sh.which('react-native')) {
+    console.log('缺少react-native命令，请安装react-native-cli')
+    return false
+  }
+  sh.exec('echo "java -version" && java -version')
+  sh.exec('echo "node -v" && node -v')
+  sh.exec('echo "yarn -v" && yarn -v')
+  sh.exec('echo "react-native -v" && react-native -v')
+  return true
+}
+
+function createSrcEnv() {
+  cdRoot()
+  sh.mkdir('-p', './src')
+  sh.exec(`echo '{ "env": "${env}" }' > ./src/env.json`)
+}
+
+function cacheNodeMoudles() {
+  const nodeModulesPath = path.resolve(__dirname, '../node_modules')
+  const tempDir = '/var/tmp/' + packageJson.name + '/'
+  const tempModulesPath = tempDir + '/node_modules'
+  const lockPath = path.resolve(__dirname, '../yarn.lock')
+  const lockmd5Path = path.resolve(__dirname, '../scripts/lockmd5')
+  const lockMd5 = getMd5(lockPath)
+
+  if (!fs.existsSync(nodeModulesPath)) {
+    yarnInstall()
+    return
+  }
+
+  if (!fs.existsSync(lockmd5Path)) {
+    yarnInstall()
+    return
+  }
+
+  const lastLockMd5 = fs.readFileSync(lockmd5Path, 'utf8').trim()
+  if (lastLockMd5 !== lockMd5) {
+    yarnInstall()
+    return
+  }
+
+  // 加载 cache node_modules
+  if (!fs.existsSync(nodeModulesPath)) {
+    if (fs.existsSync(tempModulesPath)) {
+      sh.cp('-rf', tempModulesPath, nodeModulesPath)
+    } else {
+      yarnInstall()
+    }
+  }
+}
+
+function yarnInstall() {
+  const nodeModulesPath = path.resolve(__dirname, '../node_modules')
+  const lockPath = path.resolve(__dirname, '../yarn.lock')
+  const lockmd5Path = path.resolve(__dirname, '../scripts/lockmd5')
+  const lockMd5 = getMd5(lockPath)
+  const tempDir = '/var/tmp/' + packageJson.name + '/'
+  cdRoot()
+  sh.exec('yarn')
+  sh.exec(`echo "${lockMd5}" > ${lockmd5Path}`)
+  sh.mkdir('-p', tempDir)
+  sh.cp('-rf', nodeModulesPath, tempDir)
+}
+
+function getMd5(path) {
+  console.log(path)
+  //读取一个Buffer
+  const buffer = fs.readFileSync(path)
+  const fsHash = crypto.createHash('md5')
+
+  fsHash.update(buffer)
+  const md5 = fsHash.digest('hex')
+  return md5
 }
 
 async function buildAndroid() {
   console.log('>>> 安卓打包开始')
 
-  console.log('>>> 清理 apk release', ApkReleaseDir)
-  cleanApkRelease()
+  console.log('>>> 同步 android build.gradle 版本')
+  androidSyncVersion()
 
   console.log('>>> 打包开始')
-  await bundleRelease()
+  await buildApkRelease()
 
   sh.mv(ReleaseApkFullPath, NewApkFullPath)
 
-  console.log(`>>> 上传文件 ${NewApkFullPath}`)
-  await upload(NewApkFullPath)
+  // console.log(`>>> 上传文件 ${NewApkFullPath}`)
+
+  // await upload(NewApkFullPath)
 
   console.log('<<< 安卓打包结束')
 }
@@ -112,8 +237,8 @@ async function buildIos() {
 
   sh.mv(ReleaseIpaFullPath, NewIpaFullPath)
 
-  console.log(`>>> 上传文件 ${NewIpaFullPath}`)
-  await upload(NewIpaFullPath)
+  // console.log(`>>> 上传文件 ${NewIpaFullPath}`)
+  // await upload(NewIpaFullPath)
 
   console.log('<<< iOS打包结束')
 }
@@ -147,7 +272,8 @@ function getDate() {
   return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`
 }
 
-function bundleRelease() {
+function buildApkRelease() {
+  sh.mkdir('-p', ApkReleaseDir)
   return new Promise(resolve => {
     const wt = fs.watch(ApkReleaseDir, (event, filename) => {
       if (filename && filename === ReleaseApkName) {
@@ -156,22 +282,9 @@ function bundleRelease() {
       }
     })
     cdRoot()
-    sh.exec('react-native run-android --variant=release')
+    // sh.exec('react-native run-android --variant=release')
+    sh.exec('yarn build:android')
   })
-}
-
-async function upload(path) {
-  loading.start()
-  await new Promise(resolve => {
-    sh.exec(`rsync ${path} wuser@101.132.40.237:/opt/static/download/${packageJson.name}/`, (code, stdout, stderr) => {
-      if (code === 0) {
-        resolve()
-      } else {
-        console.log(stderr)
-      }
-    })
-  })
-  loading.stop()
 }
 
 function androidSyncVersion() {
@@ -187,6 +300,7 @@ function androidSyncVersion() {
 
   fs.writeFileSync(gradlePath, fileStr)
 }
+
 function iosSyncVersion() {
   const infoPlistPath = path.resolve(__dirname, `../ios/${packageJson.name}/Info.plist`)
   const serviceInfoPlistPath = path.resolve(__dirname, '../ios/NotificationService/Info.plist')
@@ -196,11 +310,13 @@ function iosSyncVersion() {
 }
 
 function syncPlistVersion(infoPlistPath) {
-  if (!fs.existsSync(infoPlistPath)) return
+  if (!fs.existsSync(infoPlistPath)) {
+    return
+  }
 
   const info = plist.parse(fs.readFileSync(infoPlistPath, 'utf8'))
-  info['CFBundleShortVersionString'] = packageJson.version
-  info['CFBundleVersion'] = String(parseInt(info['CFBundleVersion']) + 1)
+  info.CFBundleShortVersionString = packageJson.version
+  info.CFBundleVersion = String(parseInt(info.CFBundleVersion) + 1)
   const xml = plist.build(info)
   fs.writeFileSync(infoPlistPath, xml)
 }

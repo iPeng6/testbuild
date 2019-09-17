@@ -6,6 +6,7 @@ module.exports = {
     quotes:['error', 'single'],
     'comma-dangle': ['error', 'always-multiline'],
     'max-len': ['error', { code: 140 }],
+    'keyword-spacing': 'off',
     'prettier/prettier': [
       'error',
       {
