@@ -175,6 +175,9 @@ function getMd5(path) {
 async function buildAndroid() {
   console.log('>>> 安卓打包开始')
 
+  console.log('>>> 清理 apk release', ApkReleaseDir)
+  cleanApkRelease()
+
   console.log('>>> 同步 android build.gradle 版本')
   androidSyncVersion()
 
@@ -236,6 +239,12 @@ async function buildIos() {
   // await upload(NewIpaFullPath)
 
   console.log('<<< iOS打包结束')
+}
+
+function cleanApkRelease() {
+  sh.mkdir('-p', ApkReleaseDir)
+  sh.rm('-r', ApkReleaseDir)
+  sh.mkdir('-p', ApkReleaseDir)
 }
 
 function cleanIpaRelease() {
