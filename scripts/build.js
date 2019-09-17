@@ -121,24 +121,19 @@ function createSrcEnv() {
 
 function cacheNodeMoudles() {
   const nodeModulesPath = path.resolve(__dirname, '../node_modules')
-  const tempDir = '/var/tmp/' + packageJson.name + '/'
-  const tempModulesPath = tempDir + '/node_modules'
+
   const lockPath = path.resolve(__dirname, '../yarn.lock')
-  const lockmd5Path = path.resolve(__dirname, '../scripts/lockmd5')
   const lockMd5 = getMd5(lockPath)
+
+  const tempDir = '/var/tmp/' + packageJson.name + '/'
+  const tempModulesPath = tempDir + lockMd5
 
   if (!fs.existsSync(nodeModulesPath)) {
     yarnInstall()
     return
   }
 
-  if (!fs.existsSync(lockmd5Path)) {
-    yarnInstall()
-    return
-  }
-
-  const lastLockMd5 = fs.readFileSync(lockmd5Path, 'utf8').trim()
-  if (lastLockMd5 !== lockMd5) {
+  if (!fs.existsSync(tempModulesPath)) {
     yarnInstall()
     return
   }
@@ -156,18 +151,18 @@ function cacheNodeMoudles() {
 function yarnInstall() {
   const nodeModulesPath = path.resolve(__dirname, '../node_modules')
   const lockPath = path.resolve(__dirname, '../yarn.lock')
-  const lockmd5Path = path.resolve(__dirname, '../scripts/lockmd5')
   const lockMd5 = getMd5(lockPath)
+
   const tempDir = '/var/tmp/' + packageJson.name + '/'
+  const tempModulesPath = tempDir + lockMd5
   cdRoot()
   sh.exec('yarn')
-  sh.exec(`echo "${lockMd5}" > ${lockmd5Path}`)
+
   sh.mkdir('-p', tempDir)
-  sh.cp('-rf', nodeModulesPath, tempDir)
+  sh.cp('-rf', nodeModulesPath, tempModulesPath)
 }
 
 function getMd5(path) {
-  console.log(path)
   //读取一个Buffer
   const buffer = fs.readFileSync(path)
   const fsHash = crypto.createHash('md5')
@@ -243,12 +238,6 @@ async function buildIos() {
   console.log('<<< iOS打包结束')
 }
 
-function cleanApkRelease() {
-  sh.mkdir('-p', ApkReleaseDir)
-  sh.rm('-r', ApkReleaseDir)
-  sh.mkdir('-p', ApkReleaseDir)
-}
-
 function cleanIpaRelease() {
   cdIos()
   sh.mkdir('-p', IpaReleaseDir)
@@ -292,8 +281,13 @@ function androidSyncVersion() {
   let fileStr = fs.readFileSync(gradlePath).toString()
   // versionCode 1
   // versionName "1.0"
+  // fileStr = fileStr.replace(/(versionCode )(.+)/, (match, $1, buidlNo) => {
+  //   return $1 + (parseInt(buidlNo, 10) + 1)
+  // })
+  const count = sh.exec('git rev-list HEAD --count').trim()
+
   fileStr = fileStr.replace(/(versionCode )(.+)/, (match, $1, buidlNo) => {
-    return $1 + (parseInt(buidlNo) + 1)
+    return $1 + count
   })
 
   fileStr = fileStr.replace(/(versionName )(.+)/, `$1"${packageJson.version}"`)
