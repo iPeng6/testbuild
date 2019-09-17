@@ -273,8 +273,7 @@ function getDate() {
 function buildApkRelease() {
   return new Promise(resolve => {
     const wt = fs.watch(ApkReleaseDir, (event, filename) => {
-      console.log('======', event, filename)
-      if (filename && filename === ReleaseApkName) {
+      if (fs.existsSync(ReleaseApkFullPath)) {
         wt.close()
         resolve()
       }
