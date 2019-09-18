@@ -56,7 +56,7 @@ function start() {
   if (cmd.android) {
     console.time('android build:')
     buildAndroid().then(() => {
-      sh.exec(`git add . && git commit -a -m "build ${NewFileName}"`)
+      sh.exec(`git add . && git commit -a -m "build ${NewFileName}" && git push`)
       console.timeEnd('android build:')
     })
   } else if (cmd.ios) {
