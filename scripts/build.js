@@ -50,19 +50,19 @@ function start() {
     return
   }
 
-  cacheNodeMoudles()
+  sh.exec('yarn')
 
   createSrcEnv()
   if (cmd.android) {
     console.time('android build:')
     buildAndroid().then(() => {
-      // sh.exec(`git add . && git commit -a -m "build ${NewFileName}"`)
+      sh.exec(`git add . && git commit -a -m "build ${NewFileName}"`)
       console.timeEnd('android build:')
     })
   } else if (cmd.ios) {
     console.time('ios build:')
     buildIos().then(() => {
-      // sh.exec(`git add . && git commit -a -m "build ${NewFileName}" && git push`)
+      sh.exec(`git add . && git commit -a -m "build ${NewFileName}" && git push`)
       console.timeEnd('ios build:')
     })
   }
@@ -117,59 +117,6 @@ function createSrcEnv() {
   cdRoot()
   sh.mkdir('-p', './src')
   sh.exec(`echo '{ "env": "${env}" }' > ./src/env.json`)
-}
-
-function cacheNodeMoudles() {
-  const nodeModulesPath = path.resolve(__dirname, '../node_modules')
-
-  const lockPath = path.resolve(__dirname, '../yarn.lock')
-  const lockMd5 = getMd5(lockPath)
-
-  const tempDir = '/var/tmp/' + packageJson.name + '/'
-  const tempModulesPath = tempDir + lockMd5
-
-  if (!fs.existsSync(nodeModulesPath)) {
-    yarnInstall()
-    return
-  }
-
-  if (!fs.existsSync(tempModulesPath)) {
-    yarnInstall()
-    return
-  }
-
-  // 加载 cache node_modules
-  if (!fs.existsSync(nodeModulesPath)) {
-    if (fs.existsSync(tempModulesPath)) {
-      sh.cp('-rf', tempModulesPath, nodeModulesPath)
-    } else {
-      yarnInstall()
-    }
-  }
-}
-
-function yarnInstall() {
-  const nodeModulesPath = path.resolve(__dirname, '../node_modules')
-  const lockPath = path.resolve(__dirname, '../yarn.lock')
-  const lockMd5 = getMd5(lockPath)
-
-  const tempDir = '/var/tmp/' + packageJson.name + '/'
-  const tempModulesPath = tempDir + lockMd5
-  cdRoot()
-  sh.exec('yarn')
-
-  sh.mkdir('-p', tempDir)
-  sh.cp('-rf', nodeModulesPath, tempModulesPath)
-}
-
-function getMd5(path) {
-  //读取一个Buffer
-  const buffer = fs.readFileSync(path)
-  const fsHash = crypto.createHash('md5')
-
-  fsHash.update(buffer)
-  const md5 = fsHash.digest('hex')
-  return md5
 }
 
 async function buildAndroid() {
