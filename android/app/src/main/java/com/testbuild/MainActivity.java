@@ -1,6 +1,10 @@
 package com.testbuild;
 
+import android.os.Bundle;
+
 import com.facebook.react.ReactActivity;
+
+import dev.rn.splashscreen.SplashScreen;
 
 public class MainActivity extends ReactActivity {
 
@@ -11,5 +15,11 @@ public class MainActivity extends ReactActivity {
     @Override
     protected String getMainComponentName() {
         return "testbuild";
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        SplashScreen.show(this);
+        super.onCreate(savedInstanceState);
     }
 }

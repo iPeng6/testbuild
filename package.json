@@ -9,7 +9,8 @@
     "bundle:android": "react-native bundle --entry-file index.js --platform android --dev false --bundle-output ./android/app/src/main/assets/index.android.bundle",
     "bundle:ios": "react-native bundle --entry-file index.js --platform ios --dev false --bundle-output ./ios/bundle/main.jsbundle --assets-dest ./ios/bundle",
     "build:android": "yarn bundle:android && cd android && ./gradlew clean --stacktrace && ./gradlew assembleRelease -x bundleReleaseJsAndAssets --stacktrace",
-    "cli":"cd scripts && yarn"
+    "cli:install":"cd scripts && yarn",
+    "cli":"node ./scripts/build.js"
   },
   "dependencies": {
     "react": "16.8.6",
