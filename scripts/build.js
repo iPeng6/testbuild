@@ -42,10 +42,6 @@ function start() {
     return
   }
 
-  if (!checkEnvVar()) {
-    return
-  }
-
   if (!checkCmdInstall()) {
     return
   }
@@ -54,6 +50,10 @@ function start() {
 
   createSrcEnv()
   if (cmd.android) {
+    if (!checkAndroidEnvVar()) {
+      return
+    }
+
     console.time('android build:')
     buildAndroid().then(() => {
       sh.exec(`git add . && git commit -a -m "build ${NewFileName}" && git push`)
@@ -81,19 +81,24 @@ function checkCmdInput() {
   return true
 }
 
-function checkEnvVar() {
-  if (!sh.env.ANDROID_HOME) {
-    console.log('缺少环境变量 ANDROID_HOME，请配置 android sdk')
-  }
-  sh.exec('echo ANDROID_HOME $ANDROID_HOME')
-  return true
-}
-
-function checkCmdInstall() {
+function checkAndroidEnvVar() {
   if (!sh.which('java')) {
     console.log('缺少java命令，请安装jdk')
     return false
   }
+
+  if (!sh.env.ANDROID_HOME) {
+    console.log('缺少环境变量 ANDROID_HOME，请配置 android sdk')
+    return false
+  }
+
+  sh.exec('echo "java -version" && java -version')
+  sh.exec('echo ANDROID_HOME $ANDROID_HOME')
+
+  return true
+}
+
+function checkCmdInstall() {
   if (!sh.which('node')) {
     console.log('缺少node命令，请安装node')
     return false
@@ -102,14 +107,10 @@ function checkCmdInstall() {
     console.log('缺少yarn命令，请安装yarn')
     return false
   }
-  if (!sh.which('react-native')) {
-    console.log('缺少react-native命令，请安装react-native-cli')
-    return false
-  }
-  sh.exec('echo "java -version" && java -version')
+
   sh.exec('echo "node -v" && node -v')
   sh.exec('echo "yarn -v" && yarn -v')
-  sh.exec('echo "react-native -v" && react-native -v')
+
   return true
 }
 
@@ -294,7 +295,6 @@ function archiveXcodeproj() {
 }
 
 function cleanWorkspace() {
-  console.log('>>> clean workspace')
   cdIos()
   sh.exec(`xcodebuild clean -workspace ${packageJson.name}.workspace -scheme ${packageJson.name} -configuration Debug`)
   sh.exec(`xcodebuild clean -workspace ${packageJson.name}.workspace -scheme ${packageJson.name} -configuration Release`)

@@ -6,11 +6,10 @@
  * @flow
  */
 
-import React, { useEffect } from 'react'
+import React from 'react'
 import { SafeAreaView, Text, Button, StatusBar } from 'react-native'
 import useStopwatch from './useStopwatch'
-
-import { Splash } from './src/NativeModules'
+import useSplash from './src/hooks/useSplash'
 
 const App = () => {
   const { time, start, status, Status } = useStopwatch({
@@ -19,9 +18,7 @@ const App = () => {
     onStop: () => {},
   })
 
-  useEffect(() => {
-    Splash.hide()
-  }, [])
+  useSplash()
 
   console.log('updateApp')
 

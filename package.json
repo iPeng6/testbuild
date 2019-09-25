@@ -3,11 +3,12 @@
   "version": "0.0.2",
   "private": true,
   "scripts": {
-    "start": "react-native start",
-    "android": "react-native run-android",
-    "ios": "react-native run-ios",
-    "bundle:android": "react-native bundle --entry-file index.js --platform android --dev false --bundle-output ./android/app/src/main/assets/index.android.bundle",
-    "bundle:ios": "react-native bundle --entry-file index.js --platform ios --dev false --bundle-output ./ios/bundle/main.jsbundle --assets-dest ./ios/bundle",
+    "react-native": "node ./node_modules/react-native/local-cli/cli.js",
+    "start": "yarn react-native start",
+    "android": "yarn react-native run-android",
+    "ios": "yarn react-native run-ios",
+    "bundle:android": "yarn react-native bundle --entry-file index.js --platform android --dev false --bundle-output ./android/app/src/main/assets/index.android.bundle",
+    "bundle:ios": "yarn react-native bundle --entry-file index.js --platform ios --dev false --bundle-output ./ios/bundle/main.jsbundle --assets-dest ./ios/bundle",
     "build:android": "yarn bundle:android && cd android && ./gradlew clean --stacktrace && ./gradlew assembleRelease -x bundleReleaseJsAndAssets --stacktrace",
     "cli:install":"cd scripts && yarn",
     "cli":"node ./scripts/build.js"
