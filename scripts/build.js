@@ -30,7 +30,7 @@ const ReleaseApkName = 'app-release.apk'
 const ReleaseApkFullPath = path.resolve(ApkReleaseDir, ReleaseApkName)
 const NewApkFullPath = path.resolve(ApkReleaseDir, NewFileName)
 
-const IpaReleaseDir = path.resolve(__dirname, '../ios/autoPackage')
+const IpaReleaseDir = path.resolve(__dirname, '../ios/build/autoPackage')
 const ReleaseIpaName = `${packageJson.name}.ipa`
 const ReleaseIpaFullPath = path.resolve(IpaReleaseDir, ReleaseIpaName)
 const NewIpaFullPath = path.resolve(IpaReleaseDir, NewFileName)
@@ -56,13 +56,13 @@ function start() {
 
     console.time('android build:')
     buildAndroid().then(() => {
-      sh.exec(`git add . && git commit -a -m "build ${NewFileName}" && git push`)
+      // sh.exec(`git add . && git commit -a -m "build ${NewFileName}" && git push`)
       console.timeEnd('android build:')
     })
   } else if (cmd.ios) {
     console.time('ios build:')
     buildIos().then(() => {
-      sh.exec(`git add . && git commit -a -m "build ${NewFileName}" && git push`)
+      // sh.exec(`git add . && git commit -a -m "build ${NewFileName}" && git push`)
       console.timeEnd('ios build:')
     })
   }
@@ -273,7 +273,6 @@ function syncPlistVersion(infoPlistPath) {
 
 function cleanProject() {
   cdIos()
-  sh.exec(`xcodebuild clean -project ${packageJson.name}.xcodeproj -scheme ${packageJson.name} -configuration Debug`)
   sh.exec(`xcodebuild clean -project ${packageJson.name}.xcodeproj -scheme ${packageJson.name} -configuration Release`)
 }
 
@@ -296,8 +295,7 @@ function archiveXcodeproj() {
 
 function cleanWorkspace() {
   cdIos()
-  sh.exec(`xcodebuild clean -workspace ${packageJson.name}.workspace -scheme ${packageJson.name} -configuration Debug`)
-  sh.exec(`xcodebuild clean -workspace ${packageJson.name}.workspace -scheme ${packageJson.name} -configuration Release`)
+  sh.exec(`xcodebuild clean -workspace ${packageJson.name}.xcworkspace -scheme ${packageJson.name} -configuration Release`)
 }
 
 function archiveWorkspace() {
