@@ -3,7 +3,6 @@ import { SafeAreaView, Text, View, Button, StatusBar, StyleSheet } from 'react-n
 import useStopwatch from 'src/hooks/useStopwatch'
 import useSplash from 'src/hooks/useSplash'
 import { useStore } from 'src/store'
-import { Types } from 'src/store/modules/todos'
 
 const App = () => {
   const { time, start, status, Status } = useStopwatch({
@@ -14,7 +13,7 @@ const App = () => {
 
   useSplash()
 
-  const { state, dispatch } = useStore()
+  const { state, dispatch, Types } = useStore()
 
   console.log('updateApp')
 
@@ -40,7 +39,7 @@ const App = () => {
             <Button
               title="Del"
               onPress={() => {
-                dispatch({ type: Types.DEL_BY_ID, payload: { id } })
+                dispatch({ type: Types.todosM.DEL_BY_ID, payload: { id } })
               }}
             />
           </View>
@@ -50,7 +49,7 @@ const App = () => {
       <Button
         title="Add"
         onPress={() => {
-          dispatch({ type: Types.ADD_TODO, payload: { todo: 'dodo' + Math.random() } })
+          dispatch({ type: Types.todosM.ADD_TODO, payload: { todo: 'dodo' + Math.random() } })
         }}
       />
     </SafeAreaView>

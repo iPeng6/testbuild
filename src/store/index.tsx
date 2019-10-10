@@ -1,5 +1,5 @@
 import { useContext } from 'react'
-import { combineState, combineReducer } from './reducer'
+import { combineState, combineReducer, Types } from './combine'
 import createStore from './create'
 
 export const { StateCtx, DispatchCtx, Provider } = createStore(combineState, combineReducer)
@@ -8,11 +8,11 @@ export const { StateCtx, DispatchCtx, Provider } = createStore(combineState, com
 export function useStore() {
   const state = useContext(StateCtx)
   const dispatch = useContext(DispatchCtx)
-  return { state, dispatch }
+  return { state, dispatch, Types }
 }
 
 // 因为 dispatch 是始终不变的，当不依赖state的时，可以避免 rerender
 export function useDispatch() {
   const dispatch = useContext(DispatchCtx)
-  return { dispatch }
+  return { dispatch, Types }
 }
